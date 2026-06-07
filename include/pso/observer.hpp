@@ -4,10 +4,9 @@
 #include <string>
 #include <vector>
 #include "particle.hpp"
+#include "result.hpp"
 
 namespace pso {
-
-struct Result; // forward declaration — defined in pso.hpp
 
 struct IObserver {
     virtual ~IObserver() = default;

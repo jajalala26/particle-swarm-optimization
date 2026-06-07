@@ -6,15 +6,9 @@
 #include "config.hpp"
 #include "observer.hpp"
 #include "particle.hpp"
+#include "result.hpp"
 
 namespace pso {
-
-struct Result {
-    std::vector<double> best_pos;
-    double best_fitness  = 0.0;
-    int    iterations    = 0;
-    bool   converged     = false;
-};
 
 template<typename CostFn>
 concept CostFunction = requires(CostFn fn, std::span<const double> pos) {
@@ -27,7 +21,7 @@ public:
     PSO(Config cfg, CostFn fn);
 
     // Run the optimization. Observers are notified each iteration and on completion.
-    Result run(std::vector<IObserver*> observers = {});
+    Result run(const std::vector<IObserver*>& observers = {});
 
 private:
     Config cfg_;
@@ -53,7 +47,7 @@ PSO<CostFn>::PSO(Config cfg, CostFn fn)
     : cfg_(std::move(cfg)), fn_(std::move(fn)) {}
 
 template<CostFunction CostFn>
-Result PSO<CostFn>::run(std::vector<IObserver*> /*observers*/) {
+Result PSO<CostFn>::run(const std::vector<IObserver*>& /*observers*/) {
     init_particles();
     // TODO: implement main optimization loop
     return Result{};
