@@ -1,5 +1,29 @@
+# Build
 build/
-.superpowers/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Compiled objects and libraries
 *.o
 *.a
 *.so
+*.so.*
+*.dylib
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.clangd/
+compile_commands.json
+
+# Superpowers
+.superpowers/
