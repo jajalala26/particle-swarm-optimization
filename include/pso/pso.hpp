@@ -30,6 +30,7 @@ private:
 
     void init_particles();
     // TODO: implement iteration loop with std::thread + std::barrier
+    // if cfg_.n_threads == 0, use std::thread::hardware_concurrency() (default to 1 if it returns 0)
     // Per iteration:
     //   1. Evaluate cost for each particle (parallel)
     //   2. Update personal bests
@@ -37,7 +38,9 @@ private:
     //   4. Update velocities and positions (parallel)
     //   5. Get inertia weight from cfg_.inertia->get_w()
     //   6. Check convergence against cfg_.tol
-    //   7. Notify observers
+    //   7. Notify observers: observer->on_iteration(iter, best_fitness, particles)
+    //   8. After loop exits, call observer->on_complete(result) for each observer
+    // Suggested includes when implementing: <thread>, <barrier>, <random>
 };
 
 // --- Inline stub implementations (fill these in) ---

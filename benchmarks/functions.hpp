@@ -4,7 +4,8 @@
 
 namespace benchmarks {
 
-// All functions: minimize over R^n. Known optimum is 0.0 at origin unless noted.
+// All functions: minimize over R^n. known_optimum is the minimum function value.
+// Note: the minimizing *position* is not always the origin (see Rosenbrock).
 
 struct Sphere {
     static constexpr double known_optimum = 0.0;
