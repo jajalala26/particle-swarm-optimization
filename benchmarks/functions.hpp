@@ -1,55 +1,81 @@
 #pragma once
 
 #include <span>
+#include <cmath>
+#include <numbers>
 
-namespace benchmarks {
+namespace benchmarks
+{
 
-// All functions: minimize over R^n. known_optimum is the minimum function value.
-// Note: the minimizing *position* is not always the origin (see Rosenbrock).
+  // All functions: minimize over R^n. known_optimum is the minimum function value.
+  // Note: the minimizing *position* is not always the origin (see Rosenbrock).
 
-struct Sphere {
+  struct Sphere
+  {
     static constexpr double known_optimum = 0.0;
     double operator()(std::span<const double> x) const;
-    // TODO: sum of squares: sum(x_i^2)
-};
+  };
 
-struct Rastrigin {
+  struct Rastrigin
+  {
     static constexpr double known_optimum = 0.0;
     double operator()(std::span<const double> x) const;
-    // TODO: 10*n + sum(x_i^2 - 10*cos(2*pi*x_i))
-    // Typical bounds: [-5.12, 5.12] per dimension
-};
+  };
 
-struct Rosenbrock {
+  struct Rosenbrock
+  {
     static constexpr double known_optimum = 0.0;
     double operator()(std::span<const double> x) const;
-    // TODO: sum(100*(x_{i+1} - x_i^2)^2 + (1 - x_i)^2)
-    // Optimum at (1, 1, ..., 1)
-};
+  };
 
-struct Ackley {
+  struct Ackley
+  {
     static constexpr double known_optimum = 0.0;
     double operator()(std::span<const double> x) const;
-    // TODO: -20*exp(-0.2*sqrt(mean(x_i^2))) - exp(mean(cos(2*pi*x_i))) + 20 + e
-    // Typical bounds: [-32.768, 32.768] per dimension
-};
+  };
 
-// --- Inline stub implementations (fill these in) ---
+  // --- Inline stub implementations ---
 
-inline double Sphere::operator()(std::span<const double> /*x*/) const {
-    return 0.0; // TODO: implement
-}
+  inline double Sphere::operator()(std::span<const double> x) const
+  {
+    double sum = 0.0;
+    for (double xi : x)
+      sum += xi * xi;
+    return sum;
+  }
 
-inline double Rastrigin::operator()(std::span<const double> /*x*/) const {
-    return 0.0; // TODO: implement
-}
+  inline double Rastrigin::operator()(std::span<const double> x) const
+  {
+    constexpr double pi = std::numbers::pi;
+    double sum = 10.0 * static_cast<double>(x.size());
+    for (double xi : x)
+      sum += xi * xi - 10.0 * std::cos(2.0 * pi * xi);
+    return sum;
+  }
 
-inline double Rosenbrock::operator()(std::span<const double> /*x*/) const {
-    return 0.0; // TODO: implement
-}
+  inline double Rosenbrock::operator()(std::span<const double> x) const
+  {
+    double sum = 0.0;
+    for (std::size_t i = 0; i + 1 < x.size(); ++i)
+    {
+      double t1 = x[i + 1] - x[i] * x[i];
+      double t2 = 1.0 - x[i];
+      sum += 100.0 * t1 * t1 + t2 * t2;
+    }
+    return sum;
+  }
 
-inline double Ackley::operator()(std::span<const double> /*x*/) const {
-    return 0.0; // TODO: implement
-}
+  inline double Ackley::operator()(std::span<const double> x) const
+  {
+    constexpr double pi = std::numbers::pi;
+    int n = static_cast<int>(x.size());
+    double sum_sq = 0.0, sum_cos = 0.0;
+    for (double xi : x)
+    {
+      sum_sq += xi * xi;
+      sum_cos += std::cos(2.0 * pi * xi);
+    }
+    return -20.0 * std::exp(-0.2 * std::sqrt(sum_sq / n)) - std::exp(sum_cos / n) + 20.0 + std::numbers::e;
+  }
 
 } // namespace benchmarks

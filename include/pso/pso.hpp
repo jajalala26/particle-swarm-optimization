@@ -7,23 +7,28 @@
 #include "observer.hpp"
 #include "particle.hpp"
 #include "result.hpp"
+#include <barrier>
+#include <random>
+#include <thread>
 
-namespace pso {
+namespace pso
+{
 
-template<typename CostFn>
-concept CostFunction = requires(CostFn fn, std::span<const double> pos) {
+  template <typename CostFn>
+  concept CostFunction = requires(CostFn fn, std::span<const double> pos) {
     { fn(pos) } -> std::convertible_to<double>;
-};
+  };
 
-template<CostFunction CostFn>
-class PSO {
-public:
+  template <CostFunction CostFn>
+  class PSO
+  {
+  public:
     PSO(Config cfg, CostFn fn);
 
     // Run the optimization. Observers are notified each iteration and on completion.
-    Result run(const std::vector<IObserver*>& observers = {});
+    Result run(const std::vector<IObserver *> &observers = {});
 
-private:
+  private:
     Config cfg_;
     CostFn fn_;
     std::vector<Particle> particles_;
@@ -41,25 +46,46 @@ private:
     //   7. Notify observers: observer->on_iteration(iter, best_fitness, particles)
     //   8. After loop exits, call observer->on_complete(result) for each observer
     // Suggested includes when implementing: <thread>, <barrier>, <random>
-};
+  };
 
-// --- Inline stub implementations (fill these in) ---
+  // --- Inline stub implementations (fill these in) ---
 
-template<CostFunction CostFn>
-PSO<CostFn>::PSO(Config cfg, CostFn fn)
-    : cfg_(std::move(cfg)), fn_(std::move(fn)) {}
+  template <CostFunction CostFn>
+  PSO<CostFn>::PSO(Config cfg, CostFn fn)
+      : cfg_(std::move(cfg)), fn_(std::move(fn)) {}
 
-template<CostFunction CostFn>
-Result PSO<CostFn>::run(const std::vector<IObserver*>& /*observers*/) {
+  template <CostFunction CostFn>
+  Result PSO<CostFn>::run(const std::vector<IObserver *> & /*observers*/)
+  {
     init_particles();
     // TODO: implement main optimization loop
-    return Result{};
-}
 
-template<CostFunction CostFn>
-void PSO<CostFn>::init_particles() {
-    // TODO: initialize particles with random positions in cfg_.bounds
-    //       and zero (or small random) velocities
-}
+    return Result{};
+  }
+
+  template <CostFunction CostFn>
+  void PSO<CostFn>::init_particles()
+  {
+    std::mt19937 rng(cfg_.seed != 0 ? cfg_.seed : std::random_device{}());
+
+    // init particles_ vector with n_particles Particle obj
+    particles_.resize(cfg_.n_particles);
+
+    for (auto &p : particles_)
+    {
+      p.position.resize(cfg_.n_dimensions);
+      p.velocity.assign(cfg_.n_dimensions, 0.0);
+      p.pbest_fitness = std::numeric_limits<double>::infinity();
+
+      // for each dimension in the cur particle
+      for (int d = 0; d < cfg_.n_dimensions; ++d)
+      {
+        std::uniform_real_distribution<double> dist(
+            cfg_.bounds[d].lo, cfg_.bounds[d].hi);
+        p.position[d] = dist(rng);
+      }
+      p.pbest_pos = p.position;
+    }
+  }
 
 } // namespace pso
