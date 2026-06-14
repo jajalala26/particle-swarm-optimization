@@ -34,18 +34,6 @@ namespace pso
     std::vector<Particle> particles_;
 
     void init_particles();
-    // TODO: implement iteration loop with std::thread + std::barrier
-    // if cfg_.n_threads == 0, use std::thread::hardware_concurrency() (default to 1 if it returns 0)
-    // Per iteration:
-    //   1. Evaluate cost for each particle (parallel)
-    //   2. Update personal bests
-    //   3. Call cfg_.topology->get_attractor() per particle
-    //   4. Update velocities and positions (parallel)
-    //   5. Get inertia weight from cfg_.inertia->get_w()
-    //   6. Check convergence against cfg_.tol
-    //   7. Notify observers: observer->on_iteration(iter, best_fitness, particles)
-    //   8. After loop exits, call observer->on_complete(result) for each observer
-    // Suggested includes when implementing: <thread>, <barrier>, <random>
   };
 
   // --- Inline stub implementations (fill these in) ---
@@ -55,12 +43,123 @@ namespace pso
       : cfg_(std::move(cfg)), fn_(std::move(fn)) {}
 
   template <CostFunction CostFn>
-  Result PSO<CostFn>::run(const std::vector<IObserver *> & /*observers*/)
+  Result PSO<CostFn>::run(const std::vector<IObserver *> &observers)
   {
     init_particles();
-    // TODO: implement main optimization loop
 
-    return Result{};
+    // figure out how many threads to use
+    unsigned int n_threads = cfg_.n_threads > 0
+                                 ? static_cast<unsigned int>(cfg_.n_threads)
+                                 : std::max(1u, std::thread::hardware_concurrency());
+
+    Result result;
+    double prev_best = std::numeric_limits<double>::infinity();
+
+    // one cached attractor position per particle (filled by thread 0)
+    std::vector<std::vector<double>> attractors(cfg_.n_particles);
+
+    // one RNG per thread so threads don't share (and race on) one RNG
+    std::vector<std::mt19937> rngs(n_threads);
+    {
+      std::mt19937 seed_gen(cfg_.seed != 0 ? cfg_.seed : std::random_device{}());
+      for (auto &r : rngs)
+        r.seed(seed_gen());
+    }
+
+    // the barrier — all n_threads must arrive before any continue
+    std::barrier sync(n_threads);
+
+    // the worker lambda — each thread runs this with its own tid
+    // [&] captures everything in the enclosing scope by reference
+    auto worker = [&](unsigned int tid)
+    {
+      int lo = (cfg_.n_particles * tid) / n_threads;
+      int hi = (cfg_.n_particles * (tid + 1)) / n_threads;
+      std::uniform_real_distribution<double> unit(0.0, 1.0);
+
+      for (int iter = 0; iter < cfg_.max_iter; ++iter)
+      {
+
+        // --- 1. evaluate cost, update personal best ---
+        for (int i = lo; i < hi; ++i)
+        {
+          double f = fn_(particles_[i].position);
+          if (f < particles_[i].pbest_fitness)
+          {
+            particles_[i].pbest_fitness = f;
+            particles_[i].pbest_pos = particles_[i].position;
+          }
+        }
+
+        sync.arrive_and_wait(); // barrier 1: all pbests are now fresh
+
+        // --- 2. thread 0 does the single-threaded work ---
+        if (tid == 0)
+        {
+          // find global best
+          double cur_best = std::numeric_limits<double>::infinity();
+          for (const auto &p : particles_)
+          {
+            if (p.pbest_fitness < cur_best)
+            {
+              cur_best = p.pbest_fitness;
+              result.best_pos = p.pbest_pos;
+            }
+          }
+          result.best_fitness = cur_best;
+          result.iterations = iter + 1;
+          result.converged = std::abs(cur_best - prev_best) < cfg_.tol;
+          prev_best = cur_best;
+
+          // cache attractor for every particle
+          for (int i = 0; i < cfg_.n_particles; ++i)
+            attractors[i] = cfg_.topology->get_attractor(i, particles_);
+
+          for (auto *obs : observers)
+            obs->on_iteration(iter, cur_best, particles_);
+        }
+
+        sync.arrive_and_wait(); // barrier 2: attractors and converged flag are ready
+
+        if (result.converged)
+          break;
+
+        // --- 3. update velocity and position ---
+        double w = cfg_.inertia->get_w(iter, cfg_.max_iter);
+        for (int i = lo; i < hi; ++i)
+        {
+          for (int d = 0; d < cfg_.n_dimensions; ++d)
+          {
+            double r1 = unit(rngs[tid]);
+            double r2 = unit(rngs[tid]);
+
+            // velocity update equation
+            particles_[i].velocity[d] =
+                w * particles_[i].velocity[d] + cfg_.c1 * r1 * (particles_[i].pbest_pos[d] - particles_[i].position[d]) + cfg_.c2 * r2 * (attractors[i][d] - particles_[i].position[d]);
+
+            particles_[i].position[d] += particles_[i].velocity[d];
+          }
+        }
+
+        sync.arrive_and_wait(); // barrier 3: all positions updated before next iter
+      }
+    };
+
+    // launch n_threads threads, each running worker with its own tid
+    std::vector<std::thread> threads;
+    threads.reserve(n_threads);
+    for (unsigned int t = 0; t < n_threads; ++t)
+      threads.emplace_back(worker, t);
+
+    // wait for all threads to finish
+    for (auto &th : threads)
+      th.join();
+
+    // notify observers that the run is complete
+    for (auto *obs : observers)
+      obs->on_complete(result);
+
+    return result;
   }
 
   template <CostFunction CostFn>
