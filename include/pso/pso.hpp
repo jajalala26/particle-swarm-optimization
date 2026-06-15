@@ -7,6 +7,7 @@
 #include "observer.hpp"
 #include "particle.hpp"
 #include "result.hpp"
+#include <algorithm>
 #include <barrier>
 #include <random>
 #include <thread>
@@ -53,7 +54,6 @@ namespace pso
                                  : std::max(1u, std::thread::hardware_concurrency());
 
     Result result;
-    double prev_best = std::numeric_limits<double>::infinity();
 
     // one cached attractor position per particle (filled by thread 0)
     std::vector<std::vector<double>> attractors(cfg_.n_particles);
@@ -108,8 +108,7 @@ namespace pso
           }
           result.best_fitness = cur_best;
           result.iterations = iter + 1;
-          result.converged = std::abs(cur_best - prev_best) < cfg_.tol;
-          prev_best = cur_best;
+          result.converged = cur_best < cfg_.tol;
 
           // cache attractor for every particle
           for (int i = 0; i < cfg_.n_particles; ++i)
@@ -136,6 +135,9 @@ namespace pso
             // velocity update equation
             particles_[i].velocity[d] =
                 w * particles_[i].velocity[d] + cfg_.c1 * r1 * (particles_[i].pbest_pos[d] - particles_[i].position[d]) + cfg_.c2 * r2 * (attractors[i][d] - particles_[i].position[d]);
+
+            double v_max = 0.5 * (cfg_.bounds[d].hi - cfg_.bounds[d].lo);
+            particles_[i].velocity[d] = std::clamp(particles_[i].velocity[d], -v_max, v_max);
 
             particles_[i].position[d] += particles_[i].velocity[d];
           }
