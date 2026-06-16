@@ -31,3 +31,5 @@ compile_commands.json
 # impl steps
 IMPLEMENTATION_GUIDE.md
 docs/superpowers
+THREADING_GUIDE.md
+overview.html

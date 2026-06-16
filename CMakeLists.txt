@@ -19,6 +19,9 @@ target_link_libraries(benchmark PRIVATE pso)
 add_executable(basic examples/basic.cpp)
 target_link_libraries(basic PRIVATE pso)
 
+add_executable(visualize examples/visualize.cpp)
+target_link_libraries(visualize PRIVATE pso)
+
 # Tests
 include(FetchContent)
 FetchContent_Declare(
