@@ -79,9 +79,11 @@ std::cout << "converged:    " << (result.converged ? "yes" : "no") << "\n";
 
 ## Inertia strategies
 
-`StaticInertia(w)` - Constant weight `w` throughout the run
-`LinearDecayInertia(w_start, w_end)` - Linearly decays from `w_start` to `w_end`
-`RandomInertia(w_min, w_max)` - Uniform random weight each iteration
+| Class                                | Description                               |
+| ------------------------------------ | ----------------------------------------- |
+| `StaticInertia(w)`                   | Constant weight `w` throughout the run    |
+| `LinearDecayInertia(w_start, w_end)` | Linearly decays from `w_start` to `w_end` |
+| `RandomInertia(w_min, w_max)`        | Uniform random weight each iteration      |
 
 ```cpp
 cfg.inertia = std::make_shared<pso::LinearDecayInertia>(0.9, 0.4);
@@ -91,8 +93,10 @@ cfg.inertia = std::make_shared<pso::LinearDecayInertia>(0.9, 0.4);
 
 ## Topology strategies
 
-`GBestTopology` - All particles attracted to the global best |
-`LBestTopology(k)` - Each particle attracted to the best in its ring of `k` neighbors |
+| Class              | Description                                                      |
+| ------------------ | ---------------------------------------------------------------- |
+| `GBestTopology`    | All particles attracted to the global best                       |
+| `LBestTopology(k)` | Each particle attracted to the best in its ring of `k` neighbors |
 
 ```cpp
 cfg.topology = std::make_shared<pso::LBestTopology>(3);
